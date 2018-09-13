@@ -1,0 +1,70 @@
+body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 10px;
+    box-sizing: border-box;
+    user-select: none;
+    font-family: "Open Sans",arial,x-locale-body,sans-serif;
+}
+
+img {
+    width: fit-content;
+}
+
+#board {
+    width: 100%;
+    height: 100%;
+    padding: 20px 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.chips {
+    padding: 15px 0;
+}
+
+#controll-panel {
+    /* display: flex;
+    align-items: center; */
+    padding: 15px 0;
+}
+
+.column-layout {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.row-layout {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+}
+
+.controll {
+    margin: 10px 7.5px;
+    font-weight: 500;
+}
+
+.row-layout-rebuy {
+    justify-content: center;
+    height: 50%;
+}
+
+#bet-size-number {
+    margin-left: 30px;
+    width: 60px;
+}
+
+#bet-size-range {
+    width: 300px;
+}

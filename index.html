@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en" style="height: 100%">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width initial-scale=0.5 maximum-scale=0.5 user-scalable=no">
+    <title>AKQ</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <span id="villain-stack" class="chips"></span>
+    <img id="villain-card-img" src="assets/back.jpg"/>
+    <div id="board">
+        <span class="chips" id="villain-bet-raise-chips"></span>
+        <span class="chips" id="user-bet-raise-chips"></span>
+    </div>
+    <img id="user-card-img" src="assets/k.jpg"/>
+    <span id="user-stack" class="chips"></span>
+    <div id="controll-panel">
+        <div class="column-layout">
+            <input type="range" min="1" max="100" value="1" id="bet-size-range" class="controll">
+            <div class="row-layout">
+                <div class="row-layout">
+                    <button class="controll" id="fold-button">FOLD</button>
+                    <button class="controll" id="check-call-button">CHECK</button>
+                    <button class="controll" id="bet-raise-button">RAISE</button>
+                </div>
+                <input id="bet-size-number" class="controll" type="number" value="1">
+            </div>
+        </div>
+    </div>
+    <div class="row-layout row-layout-rebuy">
+        <button class="controll" id="rebuy-button">REBUY</button>
+    </div>
+    <script src="main.js"></script>
+  </body>
+</html>
