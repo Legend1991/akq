@@ -6,22 +6,54 @@ class AI {
     requestAction(player, board) {
         return new Promise((resolve, reject) => {
             setTimeout(() => {
-                if (this._canBet(player, board) && player.card === A) {
-                    return resolve({
-                        type: 'BET',
-                        value: board.lastBet + Math.min(board.ante * 6, board.maxBet - board.lastBet)
-                    })
+                const betSize = Math.min(board.lastBet, board.maxBet - board.lastBet)
+
+                if (player.card === A) {
+                    if (this._canBet(player, board)) {
+                        return resolve({
+                            type: 'BET',
+                            value: board.lastBet + betSize
+                        })
+                    } else {
+                        return resolve({type: 'CALL'})
+                    }
+                }
+
+                if (player.card === K) {
+                    const s = betSize / (board.lastBet + board.lastBet)
+                    const betPctFunc = s => Math.max(1 / (1 + s) - 0.5, 0)
+                    
+                    if (player.bet < board.lastBet) {
+                        const callSize = board.lastBet - player.bet
+
+                        if (this._isLucked(betPctFunc(s))) {
+                            if (callSize > player.bet * 2) {
+                                return resolve({type: 'CALL'})
+                            } else if (this._canBet(player, board)) {
+                                return resolve({
+                                    type: 'BET',
+                                    value: board.lastBet + betSize
+                                })
+                            } else {
+                                return resolve({type: 'FOLD'})
+                            }
+                        } else {
+                            return resolve({type: 'FOLD'})
+                        }
+                    } else {
+                        // console.log('K check/bet')
+                        return resolve(this._betOr(betPctFunc, 'CALL', player, board))
+                    }
                 }
 
                 if (player.card === Q) {
                     if (player.bet < board.lastBet) {
                         return resolve({type: 'FOLD'})
                     } else {
-                        return resolve({type: 'CALL'})
+                        // console.log('Q', Math.min(board.lastBet * 2, board.maxBet - board.lastBet))
+                        return resolve(this._betOr(s => s / (1 + s), 'FOLD', player, board))
                     }
                 }
-
-                return resolve({type: 'CALL'})
             }, 1000)
         })
     }
@@ -34,11 +66,26 @@ class AI {
 
     }
 
+    _betOr(betPctFunc, altAction, player, board) {
+        const betSize = Math.min(board.lastBet, board.maxBet - board.lastBet)
+        const s = betSize / (board.lastBet + board.lastBet)
+
+        if (this._isLucked(betPctFunc(s)) && this._canBet(player, board)) {
+            return {
+                type: 'BET',
+                value: board.lastBet + betSize
+            }
+        } else {
+            return {type: altAction}
+        }
+    }
+
     _canBet(player, board) {
         return player.stack > 0 && board.maxBet > board.lastBet
     }
 
     _isLucked(pct = 1) {
+        // console.log('_isLucked', pct)
         return Math.random() < pct
     }
 }
@@ -58,7 +105,6 @@ class UserPlayer extends Player {
     async reBuy() {
         await this.io.requestReBuy()
         this.stack = 100
-        this.io.update()
     }
 
     async getAction() {
@@ -105,11 +151,12 @@ class Board {
                 await this._toTrade()
                 await this.view.showVillainCard()
                 this._finishRound()
-                this.view.update()
             } else {
                 const player = this.players.find(e => e.stack < this.ante)
                 await player.reBuy()
             }
+
+            this.view.update()
         }
     }
 
