@@ -9,7 +9,9 @@ class AI {
                 const betSize = Math.min(board.lastBet, board.maxBet - board.lastBet)
 
                 if (player.card === A) {
-                    if (this._canBet(player, board)) {
+                    if (player.bet < board.lastBet) {
+                        return resolve({type: 'CALL'})
+                    } else if (this._canBet(player, board)) {
                         return resolve({
                             type: 'BET',
                             value: board.lastBet + betSize
@@ -20,23 +22,15 @@ class AI {
                 }
 
                 if (player.card === K) {
-                    const s = betSize / (board.lastBet + board.lastBet)
+                    const beted = Math.min(board.players[0].bet, board.players[1].bet)
+                    const s = betSize / (beted + beted)
                     const betPctFunc = s => Math.max(1 / (1 + s) - 0.5, 0)
                     
                     if (player.bet < board.lastBet) {
-                        const callSize = board.lastBet - player.bet
-
-                        if (this._isLucked(betPctFunc(s))) {
-                            if (callSize > player.bet * 2) {
-                                return resolve({type: 'CALL'})
-                            } else if (this._canBet(player, board)) {
-                                return resolve({
-                                    type: 'BET',
-                                    value: board.lastBet + betSize
-                                })
-                            } else {
-                                return resolve({type: 'FOLD'})
-                            }
+                        const isLucked = this._isLucked(betPctFunc(s))
+                        console.log('K to call', beted, betSize, s, betPctFunc(s), isLucked)
+                        if (isLucked) {
+                            return resolve({type: 'CALL'})
                         } else {
                             return resolve({type: 'FOLD'})
                         }
@@ -69,8 +63,11 @@ class AI {
     _betOr(betPctFunc, altAction, player, board) {
         const betSize = Math.min(board.lastBet, board.maxBet - board.lastBet)
         const s = betSize / (board.lastBet + board.lastBet)
+        const isLucked = this._isLucked(betPctFunc(s))
 
-        if (this._isLucked(betPctFunc(s)) && this._canBet(player, board)) {
+        console.log('_betOr', board.lastBet, betSize, s, isLucked)
+
+        if (isLucked && this._canBet(player, board)) {
             return {
                 type: 'BET',
                 value: board.lastBet + betSize
@@ -85,7 +82,7 @@ class AI {
     }
 
     _isLucked(pct = 1) {
-        // console.log('_isLucked', pct)
+        console.log('_isLucked', pct)
         return Math.random() < pct
     }
 }
@@ -99,21 +96,9 @@ class Player {
         this.io = io
         this.card = -1
     }
-}
 
-class UserPlayer extends Player {
     async reBuy() {
         await this.io.requestReBuy()
-        this.stack = 100
-    }
-
-    async getAction() {
-        return this.io.requestAction()
-    }
-}
-
-class AIPlayer extends Player {
-    reBuy() {
         this.stack = 100
     }
 
@@ -142,6 +127,7 @@ class Board {
 
     async run() {
         while(true) {
+            console.log('=========================== new run')
             if (this.players.every(e => e.stack >= this.ante)) {
                 let player = this.players.shift()
                 this.players.push(player)
@@ -383,8 +369,8 @@ class UserInterface {
 }
 
 let board = new Board()
-let villain = new AIPlayer({name: 'ai', board, io: new AI()})
-let user = new UserPlayer({name: 'user', board})
+let villain = new Player({name: 'ai', board, io: new AI()})
+let user = new Player({name: 'user', board})
 
 board.addPlayer(villain)
 board.addPlayer(user)
