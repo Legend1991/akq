@@ -10,11 +10,15 @@ class AI {
         return new Promise((resolve, reject) => {
             setTimeout(() => {
                 const betSize = Math.min(board.lastBet, board.maxBet - board.lastBet)
+                const beted = Math.min(board.players[0].bet, board.players[1].bet)
+                const s = betSize / (beted + beted)
 
                 if (player.card === A) {
+                    const betPctFunc = s => 1 / (1 + s)
+
                     if (player.bet < board.lastBet) {
                         return resolve({type: 'CALL'})
-                    } else if (this._canBet(player, board)) {
+                    } else if (this._canBet(player, board) && this._isLucked(betPctFunc(s))) {
                         return resolve({
                             type: 'BET',
                             value: board.lastBet + betSize
@@ -25,8 +29,6 @@ class AI {
                 }
 
                 if (player.card === K) {
-                    const beted = Math.min(board.players[0].bet, board.players[1].bet)
-                    const s = betSize / (beted + beted)
                     const betPctFunc = s => Math.max(1 / (1 + s) - 0.5, 0)
                     
                     if (player.bet < board.lastBet) {
@@ -231,6 +233,7 @@ class Board {
                             return
                         }
                     case 'FOLD':
+                        player.foldedCard = player.card
                         player.card = -1
                         return
                 }
@@ -254,6 +257,13 @@ class Board {
             return res + Math.min(winner.bet, e.bet)
         }, 0)
 
+        const cards = {
+            '2': 'A',
+            '1': 'K',
+            '0': 'Q'
+        }
+
+        console.log(this.players[1].name, this.players[1].card !== -1 ? cards[this.players[1].card] : cards[this.players[1].foldedCard], this.players[0].name, this.players[0].card !== -1 ? cards[this.players[0].card] : cards[this.players[0].foldedCard], winner.name === this.players[0].name ? -Math.min(this.players[0].bet, this.players[1].bet) : Math.min(this.players[0].bet, this.players[1].bet))
 
         this.players.forEach(e => {
             e.bet = 0
