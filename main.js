@@ -4,6 +4,9 @@ const Q = 0
 
 class AI {
     requestAction(player, board) {
+        this._player = player;
+        this._board = board;
+
         return new Promise((resolve, reject) => {
             setTimeout(() => {
                 const betSize = Math.min(board.lastBet, board.maxBet - board.lastBet)
@@ -28,7 +31,7 @@ class AI {
                     
                     if (player.bet < board.lastBet) {
                         const isLucked = this._isLucked(betPctFunc(s))
-                        console.log('K to call', beted, betSize, s, betPctFunc(s), isLucked)
+                        // console.log('K to call', beted, betSize, s, betPctFunc(s), isLucked)
                         if (isLucked) {
                             return resolve({type: 'CALL'})
                         } else {
@@ -65,7 +68,7 @@ class AI {
         const s = betSize / (board.lastBet + board.lastBet)
         const isLucked = this._isLucked(betPctFunc(s))
 
-        console.log('_betOr', board.lastBet, betSize, s, isLucked)
+        // console.log('_betOr', board.lastBet, betSize, s, isLucked)
 
         if (isLucked && this._canBet(player, board)) {
             return {
@@ -81,9 +84,21 @@ class AI {
         return player.stack > 0 && board.maxBet > board.lastBet
     }
 
+    // _isLucked(pct = 1) {
+    //     console.log('_isLucked', pct)
+    //     return Math.random() < pct
+    // }
+
     _isLucked(pct = 1) {
-        console.log('_isLucked', pct)
-        return Math.random() < pct
+        if (this._player.card > -1) {
+            if (this._player.stats[this._player.card].bets / this._player.stats[this._player.card].count < pct) {
+                return true
+            }
+
+            return false
+        } else {
+            return Math.random() < pct
+        }
     }
 }
 
@@ -95,6 +110,21 @@ class Player {
         this.board = board
         this.io = io
         this.card = -1
+        this.stats = {
+            '2': {
+                count: 0,
+                bets: 0,
+            },
+            '1': {
+                count: 0,
+                bets: 0,
+            },
+            '0': {
+                count: 0,
+                bets: 0
+            },
+            count: 0
+        }
     }
 
     async reBuy() {
@@ -103,7 +133,16 @@ class Player {
     }
 
     async getAction() {
-        return this.io.requestAction(this, this.board)
+        let res = await this.io.requestAction(this, this.board)
+        if (this.card > -1) {
+            this.stats[this.card].count++;
+            // if (this.card === 1) console.log(this.name, 'K', res.type, true);
+            if ((res.type === 'BET' || res.type === 'CALL') 
+                && !(res.type === 'CALL' && this.board.players[0].bet === 1 && this.board.players[1].bet === 1)) {
+                this.stats[this.card].bets++;
+            }
+        }
+        return res
     }
 }
 
@@ -156,6 +195,11 @@ class Board {
                 ),
                 1
             )[0]
+
+            if (e.stats) {
+                console.log(`${e.name}\tA: ${e.stats[2].bets}/${e.stats[2].count} (${Math.round(e.stats[2].bets/e.stats[2].count * 100)}%)\tK: ${e.stats[1].bets}/${e.stats[1].count} (${Math.round(e.stats[1].bets/e.stats[1].count * 100)}%)\tQ: ${e.stats[0].bets}/${e.stats[0].count} (${Math.round(e.stats[0].bets/e.stats[0].count * 100)}%)\ttotal: ${e.stats.count}`);
+                e.stats.count++;
+            }
         })
     }
 
