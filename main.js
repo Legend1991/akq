@@ -127,6 +127,11 @@ class Player {
             },
             count: 0
         }
+        this.dealt = {
+            2: 0,
+            1: 0,
+            0: 0
+        }
     }
 
     async reBuy() {
@@ -191,12 +196,28 @@ class Board {
         let cards = [0, 1, 2]
 
         this.players.forEach(e => {
-            e.card = cards.splice(
-                Math.floor(
-                    cards.length * Math.random()
-                ),
-                1
-            )[0]
+            // e.card = cards.splice(
+            //     Math.floor(
+            //         cards.length * Math.random()
+            //     ),
+            //     1
+            // )[0]
+
+            const total = Object.keys(e.dealt).reduce((res, k) => res + e.dealt[k], 0)
+
+            let minCard = cards.reduce((res, c) => {
+                if (e.dealt[c] / total < e.dealt[res] / total) {
+                    res = c
+                }
+
+                return res
+            }, 0)
+
+            let minCardIndex = cards.indexOf(minCard)
+            e.card = cards.splice(minCardIndex, 1)[0]
+            e.dealt[e.card]++
+
+            // console.log(e.dealt)
 
             if (e.stats) {
                 console.log(`${e.name}\tA: ${e.stats[2].bets}/${e.stats[2].count} (${Math.round(e.stats[2].bets/e.stats[2].count * 100)}%)\tK: ${e.stats[1].bets}/${e.stats[1].count} (${Math.round(e.stats[1].bets/e.stats[1].count * 100)}%)\tQ: ${e.stats[0].bets}/${e.stats[0].count} (${Math.round(e.stats[0].bets/e.stats[0].count * 100)}%)\ttotal: ${e.stats.count}`);
