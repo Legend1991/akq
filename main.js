@@ -9,8 +9,8 @@ class AI {
 
         return new Promise((resolve, reject) => {
             setTimeout(() => {
-                const betSize = Math.min(board.lastBet, board.maxBet - board.lastBet)
                 const beted = Math.min(board.players[0].bet, board.players[1].bet)
+                const betSize = (Math.min(board.lastBet, board.maxBet - board.lastBet) - beted) || beted
                 const s = betSize / (beted + beted)
 
                 if (player.card === A) {
@@ -18,7 +18,9 @@ class AI {
 
                     if (player.bet < board.lastBet) {
                         return resolve({type: 'CALL'})
-                    } else if (this._canBet(player, board) && this._isLucked(betPctFunc(s))) {
+                    } else if (this._canBet(player, board) 
+                        && this._isLucked(betPctFunc(s))
+                    ) {
                         return resolve({
                             type: 'BET',
                             value: board.lastBet + betSize
@@ -29,9 +31,10 @@ class AI {
                 }
 
                 if (player.card === K) {
-                    const betPctFunc = s => Math.max(1 / (1 + s) - 0.5, 0)
+                    const betPctFunc = s => Math.max(1 / (1 + s) - 0.5, 0) / 0.5
                     
                     if (player.bet < board.lastBet) {
+                        // console.log('ai K luckPct', betPctFunc(s), 1 / (1 + s), s, betSize, beted)
                         const isLucked = this._isLucked(betPctFunc(s))
                         // console.log('K to call', beted, betSize, s, betPctFunc(s), isLucked)
                         if (isLucked) {
@@ -40,8 +43,11 @@ class AI {
                             return resolve({type: 'FOLD'})
                         }
                     } else {
-                        // console.log('K check/bet')
-                        return resolve(this._betOr(betPctFunc, 'CALL', player, board))
+                        if (player.isDealer) {
+                            return resolve(this._betOr(betPctFunc, 'CALL', player, board))
+                        } else {
+                            return resolve({type: 'CALL'})
+                        }
                     }
                 }
 
@@ -50,10 +56,14 @@ class AI {
                         return resolve({type: 'FOLD'})
                     } else {
                         // console.log('Q', Math.min(board.lastBet * 2, board.maxBet - board.lastBet))
-                        return resolve(this._betOr(s => s / (1 + s), 'FOLD', player, board))
+                        if (player.isDealer) {
+                            return resolve(this._betOr(s => s / (1 + s), 'FOLD', player, board)) 
+                        } else {
+                            return resolve({type: 'CALL'})
+                        }
                     }
                 }
-            }, 1000)
+            }, 200)
         })
     }
 
@@ -110,6 +120,7 @@ class Player {
         this.stack = stack
         this.bet = 0
         this.board = board
+        this.isDealer = false
         this.io = io
         this.card = -1
         this.stats = {
@@ -144,8 +155,9 @@ class Player {
         if (this.card > -1) {
             this.stats[this.card].count++;
             // if (this.card === 1) console.log(this.name, 'K', res.type, true);
-            if ((res.type === 'BET' || res.type === 'CALL') 
-                && !(res.type === 'CALL' && this.board.players[0].bet === 1 && this.board.players[1].bet === 1)) {
+            if (res.type === 'BET'
+                || (res.type === 'CALL' 
+                    && (this.board.players[0].bet != 1 || this.board.players[1].bet != 1))) {
                 this.stats[this.card].bets++;
             }
         }
@@ -176,6 +188,8 @@ class Board {
             console.log('=========================== new run')
             if (this.players.every(e => e.stack >= this.ante)) {
                 let player = this.players.shift()
+                player.isDealer = false
+                this.players[0].isDealer = true
                 this.players.push(player)
 
                 this._dealtCards()
@@ -196,28 +210,24 @@ class Board {
         let cards = [0, 1, 2]
 
         this.players.forEach(e => {
-            // e.card = cards.splice(
-            //     Math.floor(
-            //         cards.length * Math.random()
-            //     ),
-            //     1
-            // )[0]
+            if (e.isDealer) {
+                e.card = cards.splice(Math.floor(Math.random() * cards.length), 1)[0];
+            } else {
+                const total = Object.keys(e.dealt).reduce((res, k) => res + e.dealt[k], 0)
 
-            const total = Object.keys(e.dealt).reduce((res, k) => res + e.dealt[k], 0)
+                let minCard = cards.reduce((res, c) => {
+                    if (e.dealt[c] / total < e.dealt[res] / total) {
+                        res = c
+                    }
+    
+                    return res
+                }, 0)
+    
+                let minCardIndex = cards.indexOf(minCard)
 
-            let minCard = cards.reduce((res, c) => {
-                if (e.dealt[c] / total < e.dealt[res] / total) {
-                    res = c
-                }
-
-                return res
-            }, 0)
-
-            let minCardIndex = cards.indexOf(minCard)
-            e.card = cards.splice(minCardIndex, 1)[0]
+                e.card = cards.splice(minCardIndex, 1)[0]
+            }
             e.dealt[e.card]++
-
-            // console.log(e.dealt)
 
             if (e.stats) {
                 console.log(`${e.name}\tA: ${e.stats[2].bets}/${e.stats[2].count} (${Math.round(e.stats[2].bets/e.stats[2].count * 100)}%)\tK: ${e.stats[1].bets}/${e.stats[1].count} (${Math.round(e.stats[1].bets/e.stats[1].count * 100)}%)\tQ: ${e.stats[0].bets}/${e.stats[0].count} (${Math.round(e.stats[0].bets/e.stats[0].count * 100)}%)\ttotal: ${e.stats.count}`);
@@ -370,15 +380,20 @@ class UserInterface {
                 setTimeout(() => {
                     this.villainCardImg.src = `assets/back.jpg`
                     resolve()
-                }, 1000)
+                }, 200)
             })
         }
     }
 
-    async requestAction() {
+    async requestAction(player, board) {
         this._showControlls()
         
         return new Promise((resolve) => {
+            // if (player.card === A || player.card === K) {
+            //     return resolve({type: 'BET', value: 2})
+            // } else {
+            //     return resolve({type: 'FOLD', value: 2})
+            // }
             this.betRaiseButton.onclick = () => {
                 this._hideControlls()
                 resolve({type: 'BET', value: Number(this.betSizeNumber.value)})
